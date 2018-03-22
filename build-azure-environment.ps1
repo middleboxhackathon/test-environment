@@ -1,6 +1,6 @@
 ## Middlebox Hackathon Environment Creation Script
 ## 
-## v0.1 - Matt C (NCSC)
+## v0.2 - Matt C (NCSC)
 ##
 ## Instructions
 ##
@@ -14,12 +14,15 @@
 ##   - Configure the desired Azure region: (choose from centralus, eastasia, southeastasia, eastus, eastus2, westus,
 ##     westus2, northcentralus, southcentralus, westcentralus, northeurope, westeurope, japaneast, japanwest,
 ##     brazilsouth, australiasoutheast, australiaeast, westindia, southindia, centralindia, canadacentral, canadaeast,
-##     uksouth, ukwest, koreacentral, koreasouth)
+##     uksouth, ukwest, koreacentral, koreasouth). Note that not all features are present in all location. This script has
+##     been tested using the centralus location.
         $location = "centralus"
 ##
 ##   - configure the auto-run scripts:
-        $configScriptUnix = "https://github.com/JasonGiedymin/nginx-init-ubuntu/blob/master/nginx"
-        $configScriptNameUnix = "install.sh"
+        $serverConfigScript = "https://raw.githubusercontent.com/middleboxhackathon/test-environment/master/build-server.sh"
+        $serverConfigScriptName = "build-server.sh"
+        $proxyConfigScript = "https://raw.githubusercontent.com/middleboxhackathon/test-environment/master/build-proxy.sh"
+        $proxyConfigScriptName = "build-proxy.sh"
 ##
 ##   - If you don't already have SSH keys in ./.ssh/ (as id_rsa and id_rsa.pub) then create them
 ##
@@ -32,25 +35,31 @@
 ##
 ##   - To remove all created resources from Azure, use 'Remove-AzureRmResourceGroup -Name $resourceGroupName'
 
+##
+##   To configure the Linux VMs run
+##
+##      curl https://raw.githubusercontent.com/middleboxhackathon/test-environment/master/build-proxy.sh | bash
+##   or
+##      curl https://raw.githubusercontent.com/middleboxhackathon/test-environment/master/build-server.sh | bash
+##
 
 
 #### You shouldn't need to edit anything below here. ####
-
-
-
+$startTime = Get-Date
 $resourceGroupName = "$($deploymentName)-ResGrp"
 $vmNamePrefix = "$($deploymentName)"
 $vNetName = "$($deploymentName)-VNet"
 $subnetName = "$($deploymentName)-Subnet"
 $securityGroupName = "$($deploymentName)-SecGrp"
-$pcapStorageAccountName = "$($deploymentName)-Pcaps"
-
+$storageAccountName = "$($deploymentName)-Storage".ToLower().Replace("-", "")
+$scriptStorageContainerName = "$($deploymentName)-ScriptStorageContainer".ToLower()
 
 ## Load Azure module
 # Import-Module AzureRM
 
 ## Log in to Azure
 # Login-AzureRmAccount
+if ([string]::IsNullOrEmpty($(Get-AzureRmContext).Account)) {Login-AzureRmAccount}
 
 ## Create Resource Group
 New-AzureRmResourceGroup -Name $resourceGroupName -Location $location
@@ -60,6 +69,16 @@ $subnetConfig = New-AzureRmVirtualNetworkSubnetConfig -Name $subnetName -Address
 $vnet = New-AzureRmVirtualNetwork -ResourceGroupName $resourceGroupName -Name $vNetName -AddressPrefix 192.168.0.0/16 -Location $location -Subnet $subnetConfig
 #Add-AzureRmVirtualNetworkSubnetConfig -Name $subnetName -VirtualNetwork $vnet -AddressPrefix 192.168.1.0/24
 Set-AzureRmVirtualNetwork -VirtualNetwork $vnet
+
+## Create storage account for storing config scripts and PCAPs
+$storage = New-AzureRmStorageAccount -ResourceGroupName $resourceGroupName -Name $storageAccountName -Location $location -SkuName "Standard_LRS"
+Set-AzureRmCurrentStorageAccount -StorageAccountName $storageAccountName -ResourceGroupName $resourceGroupName
+New-AzureStorageContainer -name $scriptStorageContainerName
+$storageKey = (Get-AzureRmStorageAccountKey -Name $storageAccountName -ResourceGroupName $resourceGroupName).Value[0]
+
+## Upload Config Scripts
+Set-AzureStorageBlobContent -File 'build-proxy.sh' -container $scriptStorageContainerName
+Set-AzureStorageBlobContent -File 'build-server.sh' -container $scriptStorageContainerName
 
 ## Create Virtual Machine(s)
 
@@ -102,7 +121,11 @@ Add-AzureRmVMSshPublicKey -VM $vmconfig -KeyData $sshPublicKey -Path "/home/azur
 $ubuntuVm = New-AzureRmVM -ResourceGroupName $resourceGroupName -Location $location -VM $vmConfig
 
 # Run configuration script on the VM
-#Set-AzureRmVMCustomScriptExtension -ResourceGroupName $resourceGroupName -VMName $vmNameUbuntu -Location $location -FileUri $configScriptUnix -Run $configScriptNameUnix -Name DemoScriptExtension
+#Set-AzureRmVMCustomScriptExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $vmNameUbuntu -Name "InstallProxy" -TypeHandlerVersion "1.1" -StorageAccountName $storageAccountName -StorageAccountKey $storageKey -FileName "build-proxy.sh" -Run "build-proxy.sh" -ContainerName $scriptStorageContainerName
+$scriptUri = "https://$storageAccountName.blob.core.windows.net/$scriptStorageContainerName/build-proxy.sh"
+$Settings = @{"fileUris" = @($scriptUri); "commandToExecute" = "./build-proxy.sh"};
+$ProtectedSettings = @{"storageAccountName" = $storageAccountName; "storageAccountKey" = $storageKey};
+Set-AzureRmVMExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $vmNameUbuntu -Name "InstallProxy" -Publisher "Microsoft.Azure.Extensions" -Type "customScript" -TypeHandlerVersion "2.0" -Settings $Settings -ProtectedSettings $ProtectedSettings
 
 ### END CREATE UBUNTU VM
 
@@ -144,11 +167,17 @@ Add-AzureRmVMSshPublicKey -VM $vmconfig -KeyData $sshPublicKey -Path "/home/azur
 $ubuntuVm = New-AzureRmVM -ResourceGroupName $resourceGroupName -Location $location -VM $vmConfig
 
 # Run configuration script on the VM
-#Set-AzureRmVMCustomScriptExtension -ResourceGroupName $resourceGroupName -VMName $vmNameUbuntu -Location $location -FileUri $configScriptUnix -Run $configScriptNameUnix -Name DemoScriptExtension
+#Set-AzureRmVMCustomScriptExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $vmNameUbuntu -Name "InstallServer" -TypeHandlerVersion "1.1" -StorageAccountName $storageAccountName -StorageAccountKey $storageKey -FileName "build-server.sh" -Run "build-server.sh" -ContainerName $scriptStorageContainerName
+$scriptUri = "https://$storageAccountName.blob.core.windows.net/$scriptStorageContainerName/build-server.sh"
+$serverDns = "$($deploymentName.ToLower() + "-server").$location.cloudapp.azure.com"
+$Settings = @{"fileUris" = @($scriptUri); "commandToExecute" = "./build-server.sh $serverDns"};
+$ProtectedSettings = @{"storageAccountName" = $storageAccountName; "storageAccountKey" = $storageKey};
+Set-AzureRmVMExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $vmNameUbuntu -Name "InstallServer" -Publisher "Microsoft.Azure.Extensions" -Type "customScript" -TypeHandlerVersion "2.0" -Settings $Settings -ProtectedSettings $ProtectedSettings
 
 ### END CREATE UBUNTU VM
 
 ### ATTACH PACKET CAPTURE
+### Note: Do all VM config before attaching packet capture to avoid filling up PCAPS with downloaded resources
 
 #$windowsNetworkWatcherExtension = Get-AzureRmVMExtensionImage -Location $location -PublisherName Microsoft.Azure.NetworkWatcher -Type NetworkWatcherAgentWindows -Version 1.4.13.0
 #$windowsNetworkWatcherExtensionName = "WindowsAzureNetworkWatcherExtension"
@@ -168,8 +197,13 @@ $ubuntuVm = New-AzureRmVM -ResourceGroupName $resourceGroupName -Location $locat
 
 ### END PACKET CAPTURE
 
-## Get the VM IP Address
-Get-AzureRmPublicIpAddress -ResourceGroupName $resourceGroupName | Select IpAddress
+Write-Host "Client VM: $deploymentName-$resourceGroupName.$location.cloudapp.azure.com"
+Write-Host "Proxy VM:  $deploymentName-proxy.$location.cloudapp.azure.com"
+Write-Host "Server VM: $deploymentName-server.$location.cloudapp.azure.com"
+
+$endTime = Get-Date
+$executionTime = $endTime.Subtract($startTime)
+Write-Host "Created $deploymentName in $($executionTime.Hours) hrs $($executionTime.Minutes) mins $($executionTime.Seconds) secs"
 
 ## Delete the resource group
 # Remove-AzureRmResourceGroup -Name $resourceGroupName
