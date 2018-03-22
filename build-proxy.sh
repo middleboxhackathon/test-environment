@@ -2,7 +2,6 @@
 
 # Install Forward Proxy
 #
-# THIS SCRIPT NEEDS TO BE RUN AS ROOT!
 #
 #
 
@@ -25,7 +24,7 @@ mkdir httpd-2.4.29/srclib/apr-util
 tar -xvzf apr-util-1.6.1.tar.gz --strip 1 -C httpd-2.4.29/srclib/apr-util/
 
 cd httpd-2.4.29
-./configure --prefix=/usr/local/apache2proxy --enable-module=proxy --with-included-apr
+./configure --prefix=/usr/local/apache2proxy --enable-module=proxy --with-included-apr --enable-ssl
 make
 sudo make install
 
@@ -69,7 +68,7 @@ LoadModule dir_module modules/mod_dir.so
 LoadModule alias_module modules/mod_alias.so
 LoadModule slotmem_shm_module modules/mod_slotmem_shm.so
 LoadModule watchdog_module modules/mod_watchdog.so
-#LoadModule ssl_module modules/mod_ssl.so
+LoadModule ssl_module modules/mod_ssl.so
 
 <IfModule unixd_module>
 User daemon
@@ -78,7 +77,7 @@ Group daemon
 ServerAdmin you@yourdomain.com
 
 ProxyRequests On
-#SSLProxyEngine On
+SSLProxyEngine On
 
 ErrorLog "logs/error_log"
 LogLevel warn
