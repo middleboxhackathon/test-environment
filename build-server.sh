@@ -30,7 +30,7 @@ sudo make install
 
 sudo /usr/local/apache2/bin/apachectl -k restart
 
-sudo certbot certonly --register-unsafely-without-email --agree-tos --webroot -w /usr/local/apache2/htdocs/ -d cyb-1376522367-server.centralus.cloudapp.azure.com
+sudo certbot certonly --register-unsafely-without-email --agree-tos --webroot -w /usr/local/apache2/htdocs/ -d $1
 # Certificate chain ends up somewhere like: /etc/letsencrypt/live/domain.com/fullchain.pem
 # Private key is somewhere like:            /etc/letsencrypt/live/domain.com/privkey.pem
 
@@ -51,13 +51,16 @@ Listen 443
 <VirtualHost *:443>
         ServerAdmin webmaster@localhost
         DocumentRoot /usr/local/apache2/htdocs
-        ServerName cyb-1376522367-server.centralus.cloudapp.azure.com
+        ServerName $1
         Include /etc/letsencrypt/options-ssl-apache.conf
-        SSLCertificateFile /etc/letsencrypt/live/cyb-1376522367-server.centralus.cloudapp.azure.com/fullchain.pem
-        SSLCertificateKeyFile /etc/letsencrypt/live/cyb-1376522367-server.centralus.cloudapp.azure.com/privkey.pem
+        SSLCertificateFile /etc/letsencrypt/live/$1/fullchain.pem
+        SSLCertificateKeyFile /etc/letsencrypt/live/$1/privkey.pem
         Include /etc/letsencrypt/options-ssl-apache.conf
 </VirtualHost>
 </IfModule>
 EOM
+
+sudo sed -i '/#Include conf\/extra\/httpd-ssl.conf/c\Include conf\/extra\/ssl.conf' /usr/local/apache2/conf/httpd.conf
+sudo sed -i '/#LoadModule\ ssl_module\ modules\/mod_ssl.so/c\LoadModule\ ssl_module\ modules\/mod_ssl.so' /usr/local/apache2/conf/httpd.conf
 
 sudo /usr/local/apache2/bin/apachectl -k restart
