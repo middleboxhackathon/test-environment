@@ -7,7 +7,7 @@
 
 sudo apt-get update
 
-sudo apt-get install -y make gcc libpcre3-dev libexpat1-dev
+sudo apt-get install -y make gcc libpcre3-dev libexpat1-dev openssl libssl-dev
 
 # Apache
 wget http://www.mirrorservice.org/sites/ftp.apache.org//httpd/httpd-2.4.29.tar.gz
