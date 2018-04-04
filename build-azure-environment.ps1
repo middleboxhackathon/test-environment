@@ -208,6 +208,9 @@ createServerVM
 Write-Host "Client VM: $deploymentName-$resourceGroupName.$location.cloudapp.azure.com"
 Write-Host "Proxy VM:  $deploymentName-proxy.$location.cloudapp.azure.com"
 Write-Host "Server VM: $deploymentName-server.$location.cloudapp.azure.com"
+Write-Host "------"
+Write-Host "When you've finished with this environment, delete it with"
+Write-Host "Remove-AzureRmResourceGroup -Name \"$resourceGroupName\""
 
 $endTime = Get-Date
 $executionTime = $endTime.Subtract($startTime)
