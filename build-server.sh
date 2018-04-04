@@ -7,7 +7,7 @@ sudo add-apt-repository -y ppa:certbot/certbot
 
 sudo apt-get update
 
-sudo apt-get install -y make gcc libpcre3-dev libexpat1-dev libssl-dev certbot
+sudo apt-get install -y make gcc libpcre3-dev libexpat1-dev openssl libssl-dev certbot
 
 # Apache
 wget http://www.mirrorservice.org/sites/ftp.apache.org//httpd/httpd-2.4.29.tar.gz
