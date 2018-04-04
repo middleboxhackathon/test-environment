@@ -2,7 +2,7 @@
 Build scripts to create a standard test environment for the ETSI Middlebox Hackathon
 
 ## Usage Instructions
-1. Please all three script files in the same directory somewhere
+1. Place all three script files in the same directory somewhere
 1. Ensure you have a valid SSH key pair in ~/.ssh/
 1. Run build-azure-environment.ps1. You'll be prompted to log in to Azure if necessary
 1. Wait for about 20 minutes
