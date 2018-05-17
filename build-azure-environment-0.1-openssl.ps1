@@ -17,7 +17,7 @@
         $location = "centralus"
 ##
 ##   - configure the auto-run scripts:
-        $serverConfigScript = "https://raw.githubusercontent.com/middleboxhackathon/test-environment/master/build-server.sh"
+#        $serverConfigScript = "https://raw.githubusercontent.com/middleboxhackathon/test-environment/master/build-server.sh"
         $serverConfigScriptName = "build-server-0.1-openssl.sh"
 ##
 ##   - If you don't already have SSH keys in ./.ssh/ (as id_rsa and id_rsa.pub) then create them
@@ -49,6 +49,9 @@ $subnetName = "$($deploymentName)-Subnet"
 $securityGroupName = "$($deploymentName)-SecGrp"
 $storageAccountName = "$($deploymentName)-Storage".ToLower().Replace("-", "")
 $scriptStorageContainerName = "$($deploymentName)-ScriptStorageContainer".ToLower()
+
+$vmSize = "Standard_D1"
+$vmStorageSkuName = "Standard_LRS"
 
 ## Load Azure module
 # Import-Module AzureRM
@@ -98,25 +101,25 @@ function createServerVM() {
     # Create a virtual network card and associate with public IP address and NSG
     $nic = New-AzureRmNetworkInterface -Name "$deploymentName-Server-NIC" -ResourceGroupName $resourceGroupName -Location $location -SubnetId $vnet.Subnets[0].Id -PublicIpAddressId $pip.Id -NetworkSecurityGroupId $nsg.Id
 
-    # Define a credential object
-    $securePassword = ConvertTo-SecureString ' ' -AsPlainText -Force
+    # Define a credential object with a cyber-security approved default password
+    $securePassword = ConvertTo-SecureString 'Password1234' -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential ("azureuser", $securePassword)
 
     # Create a virtual machine configuration
     $vmNameUbuntu = "$vmNamePrefix-Server"
-    $vmConfig = New-AzureRmVMConfig -VMName $vmNameUbuntu -VMSize Standard_D1 | Set-AzureRmVMOperatingSystem -Linux -ComputerName "$vmNamePrefix-server" -Credential $cred -DisablePasswordAuthentication | Set-AzureRmVMSourceImage -PublisherName Canonical -Offer UbuntuServer -Skus 16.04-LTS -Version latest | Add-AzureRmVMNetworkInterface -Id $nic.Id
+    $vmConfig = New-AzureRmVMConfig -VMName $vmNameUbuntu -VMSize $vmSize | Set-AzureRmVMOperatingSystem -Linux -ComputerName "$vmNamePrefix-server" -Credential $cred | Set-AzureRmVMSourceImage -PublisherName Canonical -Offer UbuntuServer -Skus 16.04-LTS -Version latest | Add-AzureRmVMNetworkInterface -Id $nic.Id
 
-    # Configure SSH Keys
-    $sshPublicKey = Get-Content "$env:USERPROFILE\.ssh\id_rsa.pub"
-    Add-AzureRmVMSshPublicKey -VM $vmconfig -KeyData $sshPublicKey -Path "/home/azureuser/.ssh/authorized_keys"
+    # Configure SSH Keys - omit if you want to be able to log in via password, since it appears to automatically disable this
+    #[string]$sshPublicKey = Get-Content "$env:USERPROFILE\.ssh\id_rsa.pub" | Out-String
+    #Add-AzureRmVMSshPublicKey -VM $vmconfig -KeyData $sshPublicKey -Path "/home/azureuser/.ssh/authorized_keys"
 
     # Create the Virtual Machine
     $ubuntuVm = New-AzureRmVM -ResourceGroupName $resourceGroupName -Location $location -VM $vmConfig
 
     # Run configuration script on the VM
-    $scriptUri = "https://$storageAccountName.blob.core.windows.net/$scriptStorageContainerName/build-server.sh"
+    $scriptUri = "https://$storageAccountName.blob.core.windows.net/$scriptStorageContainerName/$serverConfigScriptName"
     $serverDns = "$($deploymentName.ToLower() + "-server").$location.cloudapp.azure.com"
-    $Settings = @{"fileUris" = @($scriptUri); "commandToExecute" = "./build-server.sh $serverDns"};
+    $Settings = @{"fileUris" = @($scriptUri); "commandToExecute" = "./$serverConfigScriptName $serverDns"};
     $ProtectedSettings = @{"storageAccountName" = $storageAccountName; "storageAccountKey" = $storageKey};
     Set-AzureRmVMExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $vmNameUbuntu -Name "InstallServer" -Publisher "Microsoft.Azure.Extensions" -Type "customScript" -TypeHandlerVersion "2.0" -Settings $Settings -ProtectedSettings $ProtectedSettings
 }
