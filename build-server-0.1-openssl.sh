@@ -13,6 +13,12 @@ cd CYBER.MSP-OpenSSL
 make
 sudo make install
 
+cd evaluation/client_server
+make all
+
+cd ../demonstrator
+make client
+
 if [ "$1" != "local" ]
 then
     # For Azure builds, put this somewhere less obscure
