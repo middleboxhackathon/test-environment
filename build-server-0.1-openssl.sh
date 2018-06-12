@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Build server script v0.1d"
+echo "Build server script v0.1e"
 
 # OpenSSL dependencies
 sudo apt-get install -y make gcc
@@ -16,7 +16,7 @@ sudo make install
 cd evaluation/client_server
 make all
 
-cd ../demonstrator
+cd ../demonstration
 make client
 
 if [ "$1" != "local" ]
