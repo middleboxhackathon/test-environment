@@ -8,7 +8,7 @@ sudo apt-get install -y make gcc
 git clone https://forge.etsi.org/gitlab/cyber/MSP-OpenSSL
 
 # Build and install it
-cd CYBER.MSP-OpenSSL
+cd MSP-OpenSSL
 ./config
 make
 sudo make install
