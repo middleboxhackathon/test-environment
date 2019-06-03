@@ -5,7 +5,7 @@ echo "Build server script v0.1e"
 sudo apt-get install -y make gcc
 
 # Go get the source
-git clone https://forge.etsi.org/gerrit/CYBER.MSP-OpenSSL
+git clone https://forge.etsi.org/gitlab/cyber/MSP-OpenSSL
 
 # Build and install it
 cd CYBER.MSP-OpenSSL
