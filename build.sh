@@ -77,4 +77,4 @@ make install
 # MSC fix runtime linking errors (possibly a better way?)
 sudo echo "/home/user/tlmsp_install/lib" > tlmsp.conf
 sudo mv tlmsp.conf /etc/ld.so.conf.d/
-sudo ldconfigsudo 
+sudo ldconfig
