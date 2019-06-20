@@ -2,7 +2,7 @@
 echo "Build server script v0.1e"
 
 # OpenSSL dependencies
-sudo apt-get install -y make gcc
+sudo apt-get install -y make gcc git
 
 # Go get the source
 git clone https://forge.etsi.org/gitlab/cyber/MSP-OpenSSL
